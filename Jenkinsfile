@@ -6,7 +6,7 @@ pipeline {
     environment {
         DOCKER_HUB_REPO = "nayandinkarjagtap/nodejs-project1"
         // ADD THIS: The ID of your credentials stored in Jenkins (Manage Jenkins > Credentials)
-        DOCKER_HUB_CRED_ID = "docker-hub-credentials-id" 
+        DOCKER_HUB_CRED_ID = "nayandinkarjagtap" 
     }
     stages {
         stage('checkout Github') {
