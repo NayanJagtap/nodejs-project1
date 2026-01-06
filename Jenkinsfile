@@ -1,25 +1,32 @@
-pipeline{
-        agent any
-        tools {
-                nodejs 'NodeJS'
-              }
-	environment{
-		DOCKER_HUB_REPO="nayandinkarjagtap/nodejs-project1"
-			}
-        stages {
-                stage('checkout Github'){
-                        steps{
-                        git branch: 'main', credentialsId: 'Nodjs-project1-token', url: 'https://github.com/NayanJagtap/nodejs-project1.git'
-                        }
+pipeline {
+    agent any
+    tools {
+        nodejs 'NodeJS'
+    }
+    environment {
+        // Fixed: Added the missing closing quote at the end of the URL
+        DOCKER_HUB_REPO = "nayandinkarjagtap/nodejs-project1"
+    }
+    stages {
+        stage('checkout Github') {
+            steps {
+                git branch: 'main', 
+                    credentialsId: 'Nodjs-project1-token', 
+                    url: 'https://github.com/NayanJagtap/nodejs-project1.git'
+            }
+        }
+        stage('npm install') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('docker image creation') {
+            // Fixed: Docker commands must be wrapped inside a 'steps' block
+            steps {
+                script {
+                    docker.build("${DOCKER_HUB_REPO}:latest")
                 }
-                stage('npm install'){
-                        steps{
-                                sh 'npm install'
-                             }
-                                        }
-		stage('docker image creation'){
-			docker.build("${DOCKER_HUB_REPO}:latest")
-                }
-                }
-
-
+            }
+        }
+    }
+}
