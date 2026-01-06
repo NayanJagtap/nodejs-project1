@@ -4,7 +4,6 @@ pipeline {
         nodejs 'NodeJS'
     }
     environment {
-        // Fixed: Added the missing closing quote at the end of the URL
         DOCKER_HUB_REPO = "nayandinkarjagtap/nodejs-project1"
     }
     stages {
@@ -21,15 +20,17 @@ pipeline {
             }
         }
         stage('docker image creation') {
-            // Fixed: Docker commands must be wrapped inside a 'steps' block
             steps {
                 script {
                     docker.build("${DOCKER_HUB_REPO}:latest")
                 }
             }
         }
-	stage('Trivy Scan'){
-	sh 'trivy --severity HIGH,CRITICAL --no-progress image --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest'
-} 
+        stage('Trivy Scan') {
+            // Added: The required 'steps' block around the shell command
+            steps {
+                sh "trivy image --severity HIGH,CRITICAL --no-progress --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest"
+            }
+        }
     }
 }
