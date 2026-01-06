@@ -3,6 +3,9 @@ pipeline{
         tools {
                 nodejs 'NodeJS'
               }
+	environment{
+		DOCKER_HUB_REPO="nayandinkarjagtap/nodejs-project1
+			}
         stages {
                 stage('checkout Github'){
                         steps{
@@ -14,6 +17,8 @@ pipeline{
                                 sh 'npm install'
                              }
                                         }
+		stage('docker image creation'){
+			docker.build("${DOCKER_HUB_REPO}:latest")
                 }
                 }
 
