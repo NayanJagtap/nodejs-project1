@@ -4,7 +4,7 @@ pipeline{
                 nodejs 'NodeJS'
               }
 	environment{
-		DOCKER_HUB_REPO="nayandinkarjagtap/nodejs-project1
+		DOCKER_HUB_REPO="nayandinkarjagtap/nodejs-project1"
 			}
         stages {
                 stage('checkout Github'){
