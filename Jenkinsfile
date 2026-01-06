@@ -5,6 +5,8 @@ pipeline {
     }
     environment {
         DOCKER_HUB_REPO = "nayandinkarjagtap/nodejs-project1"
+        // ADD THIS: The ID of your credentials stored in Jenkins (Manage Jenkins > Credentials)
+        DOCKER_HUB_CRED_ID = "docker-hub-credentials-id" 
     }
     stages {
         stage('checkout Github') {
@@ -22,14 +24,23 @@ pipeline {
         stage('docker image creation') {
             steps {
                 script {
-                    docker.build("${DOCKER_HUB_REPO}:latest")
+                    // We remove the 'def' to make it a global variable for this run
+                    dockerImage = docker.build("${DOCKER_HUB_REPO}:latest")
                 }
             }
         }
         stage('Trivy Scan') {
-            // Added: The required 'steps' block around the shell command
             steps {
                 sh "trivy image --severity HIGH,CRITICAL --skip-update --no-progress --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest"
+            }
+        }
+        stage('push the image to dockerhub') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CRED_ID}") {
+                        dockerImage.push('latest')
+                    }
+                }
             }
         }
     }
