@@ -10,7 +10,7 @@ pipeline {
 	stages {
 		stage('Checkout Github'){
 			steps {
-			git branch: 'main', credentialsId: 'Nodjs-project1-token', url: 'https://github.com/NayanJagtap/nodejs-project1.git'
+				git branch: 'main', credentialsId: 'Nodjs-project1-token', url: 'https://github.com/NayanJagtap/nodejs-project1.git'
 			}
 		}		
 		stage('Install node dependencies'){
@@ -28,8 +28,7 @@ pipeline {
 		}
 		stage('Trivy Scan'){
 			steps {
-				//sh 'trivy --severity HIGH,CRITICAL --no-progress image --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest'
-				sh 'trivy --severity HIGH,CRITICAL --skip-update --no-progress image --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest'
+				sh 'trivy image --severity HIGH,CRITICAL --skip-db-update --no-progress --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest'
 			}
 		}
 		stage('Push Image to DockerHub'){
@@ -38,10 +37,10 @@ pipeline {
 					echo 'pushing docker image to DockerHub...'
 					docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CREDENTIALS_ID}"){
 						dockerImage.push('latest')
-						}
 					}
 				}
 			}
+		}
 		stage('Install Kubectl & ArgoCD CLI'){
 			steps {
 				sh '''
@@ -58,7 +57,7 @@ pipeline {
 			steps {
 				script {
 					kubeconfig(credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443') {
-    						sh '''
+						sh '''
 						argocd login 192.168.83.10:30844 --username admin --password $(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
 						argocd app sync nodejs-project
 						'''
@@ -70,7 +69,7 @@ pipeline {
 
 	post {
 		success {
-			echo 'Build & Deploy completed succesfully!'
+			echo 'Build & Deploy completed successfully!'
 		}
 		failure {
 			echo 'Build & Deploy failed. Check logs.'
