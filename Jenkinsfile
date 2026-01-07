@@ -28,10 +28,7 @@ pipeline {
         stage('docker image creation') {
             steps {
                 script {
-                    // Added 'def' to correctly scope the variable
                     def dockerImage = docker.build("${DOCKER_HUB_REPO}:latest")
-                    
-                    // Combined build and push logic for better reliability
                     docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CRED_ID}") {
                         dockerImage.push('latest')
                     }
@@ -48,15 +45,10 @@ pipeline {
         stage('install argocd cli and argo cli') {
             steps {
                 sh '''
-                    # Create a local bin folder in the workspace to avoid sudo errors
                     mkdir -p ./bin
-                    
-                    # Install kubectl
                     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
                     mv kubectl ./bin/
-                    
-                    # Install argocd
                     curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
                     chmod +x argocd
                     mv argocd ./bin/
@@ -66,10 +58,9 @@ pipeline {
 
         stage('Apply kubernetes Manifests & sync app with argocd') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_PATH')]) {
                     script {
-                        // Add our local bin folder to the PATH for this block
-                        withEnv(["PATH+BIN=${WORKSPACE}/bin"]) {
+                        withEnv(["PATH+BIN=${WORKSPACE}/bin", "KUBECONFIG=${KUBECONFIG_PATH}"]) {
                             def pass = sh(script: "kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d", returnStdout: true).trim()
                             sh "argocd login 192.168.83.10:30844 --username admin --password ${pass} --insecure"
                             sh "argocd app sync nodejs-project"
