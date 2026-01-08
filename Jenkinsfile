@@ -21,8 +21,10 @@ pipeline {
         stage('Build Docker Image'){
             steps {
                 script {
-                    echo 'building docker image...'
                     def dockerImage = docker.build("${DOCKER_HUB_REPO}:latest")
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CREDENTIALS_ID}"){
+                        dockerImage.push('latest')
+                    }
                 }
             }
         }
@@ -31,24 +33,11 @@ pipeline {
                 sh "trivy image --severity HIGH,CRITICAL --skip-db-update --no-progress --format table -o trivy-scan-report.txt ${DOCKER_HUB_REPO}:latest"
             }
         }
-        stage('Push Image to DockerHub'){
+        stage('Install ArgoCD CLI'){
             steps {
-                script {
-                    echo 'pushing docker image to DockerHub...'
-                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CREDENTIALS_ID}"){
-                        dockerImage.push('latest')
-                    }
-                }
-            }
-        }
-        stage('Install Kubectl & ArgoCD CLI'){
-            steps {
+                // We only need to download ArgoCD CLI since kubectl is now on your host
                 sh '''
-                echo 'installing Kubectl & ArgoCD cli...'
                 mkdir -p ./bin
-                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                chmod +x kubectl
-                mv kubectl ./bin/
                 curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
                 chmod +x argocd
                 mv argocd ./bin/
@@ -57,19 +46,18 @@ pipeline {
         }
         stage('Apply Kubernetes Manifests & Sync App with ArgoCD'){
             steps {
-                // Using 'file' type to handle the Secret File upload correctly
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_PATH')]) {
                     script {
-                        // Forcing the local bin to be the first place Jenkins looks for tools
+                        // PATH includes ./bin for argocd and system path for kubectl
                         withEnv(["PATH=${WORKSPACE}/bin:${env.PATH}", "KUBECONFIG=${KUBECONFIG_PATH}"]) {
                             
-                            // 1. Test the kubeconfig formatting immediately
+                            // 1. Verify kubectl can read your new clean config
                             sh 'kubectl version --client'
                             
                             // 2. Fetch ArgoCD Password
                             def pass = sh(script: "kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d", returnStdout: true).trim()
                             
-                            // 3. Login and Sync
+                            // 3. Login to ArgoCD (Internal Minikube IP) and Sync
                             sh """
                             argocd login 192.168.49.2:30844 --username admin --password ${pass} --insecure
                             argocd app sync nodejs-project
@@ -80,13 +68,8 @@ pipeline {
             }
         }
     }
-
     post {
-        success {
-            echo 'Build & Deploy completed successfully!'
-        }
-        failure {
-            echo 'Build & Deploy failed. Check logs.'
-        }
+        success { echo 'Build & Deploy completed successfully!' }
+        failure { echo 'Build & Deploy failed. Check logs.' }
     }
 }
